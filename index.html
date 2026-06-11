@@ -232,7 +232,10 @@ td.sub-neg{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--rd
 <body>
 <div class="hdr">
   <div class="brand">dKriuk <span>Tatang</span></div>
-  <div class="hdr-date" id="hdrDate"></div>
+  <div style="display:flex;align-items:center;gap:8px">
+    <div id="syncStatus" style="font-size:11px;color:var(--mt)">📱 Memuat...</div>
+    <div class="hdr-date" id="hdrDate"></div>
+  </div>
 </div>
 <div class="tabs">
   <button class="tab active" onclick="goTab('dashboard',this)">📊 Dashboard</button>
@@ -291,7 +294,10 @@ td.sub-neg{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--rd
   </div>
   <div id="statusBanner" class="banner info"><span id="bannerIcon">ℹ️</span><span id="bannerText">Isi stok awal semua item sebelum toko buka.</span></div>
   <div class="card">
-    <div class="card-head"><div class="card-title" id="inputCardTitle">Stok Awal Hari Ini</div></div>
+    <div class="card-head">
+      <div class="card-title" id="inputCardTitle">Stok Awal Hari Ini</div>
+      <button class="btn-outline blue" style="padding:5px 12px;font-size:11px" id="btnTambahItem" onclick="bukaPopupItemBaru()">+ Item Baru</button>
+    </div>
     <div class="input-table">
       <table class="it-table">
         <thead><tr><th>Item</th><th>Harga</th><th id="colHead" style="text-align:center">Awal</th></tr></thead>
@@ -305,6 +311,42 @@ td.sub-neg{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--rd
     <div class="sum-tot"><span class="sl">Total</span><span class="sv" id="sumTotal">Rp 0</span></div>
   </div>
   <button class="btn orange" id="btnSimpan" onclick="simpanInput()">Konfirmasi Stok Awal Siap</button>
+</div>
+
+<!-- Popup Item Baru Input Harian -->
+<div class="pop-ov" id="popNewItemOv" onclick="tutupPopupItemBaru(event)">
+  <div class="pop-box">
+    <div class="pop-title">Tambah Item Baru</div>
+    <div class="pop-sub">Item akan permanen muncul di input harian</div>
+    <div class="pop-inp-row">
+      <label>Nama Item</label>
+      <input type="text" class="pop-inp" id="newItemNama" placeholder="Contoh: Teh Botol, Kerupuk...">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="pop-inp-row">
+        <label>Harga (Rp)</label>
+        <input type="number" class="pop-inp" id="newItemHarga" placeholder="5000" min="0">
+      </div>
+      <div class="pop-inp-row">
+        <label>Satuan</label>
+        <input type="text" class="pop-inp" id="newItemSatuan" placeholder="pcs">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="pop-inp-row">
+        <label>Isi/Pack</label>
+        <input type="number" class="pop-inp" id="newItemPack" placeholder="1" min="1" value="1">
+      </div>
+      <div class="pop-inp-row">
+        <label>Harga per</label>
+        <div id="newItemPreviewHarga" style="padding:10px 0;font-size:12px;color:var(--mt)">per pcs</div>
+      </div>
+    </div>
+    <div class="pop-btns">
+      <button class="pop-cancel" onclick="tutupPopupItemBaru()">Batal</button>
+      <button class="pop-ok" onclick="konfirmasiItemBaru()">Tambah</button>
+    </div>
+  </div>
 </div>
 
 <!-- ════════════════ PENGELUARAN ════════════════ -->
@@ -348,6 +390,19 @@ td.sub-neg{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--rd
           <div class="po-field">
             <label>Jumlah (Rp)</label>
             <input type="number" id="poNominal" placeholder="0" min="0" oninput="onNomChange()">
+          </div>
+        </div>
+        <!-- Untuk item yang terhubung stok lainnya -->
+        <div id="stokLainField" style="display:none">
+          <div class="po-field">
+            <label>Kurangi Stok Item</label>
+            <select id="poStokLainItem">
+              <option value="">— tidak kurangi stok —</option>
+            </select>
+          </div>
+          <div class="po-field">
+            <label>Jumlah Stok Keluar</label>
+            <input type="number" id="poStokLainJml" placeholder="0" min="0">
           </div>
         </div>
         <div class="po-field" id="catatanField">
@@ -559,16 +614,18 @@ td.sub-neg{font-family:'Space Grotesk',sans-serif;font-weight:600;color:var(--rd
 <script>
 // ═══════════════ DATA MODEL ═══════════════
 const ITEMS = [
-  {name:'Nasi',            harga:3000,  pack:1, satuan:'pcs'},
-  {name:'Cup',             harga:3000,  pack:1, satuan:'pcs'},
-  {name:'Kulit',           harga:8000,  pack:1, satuan:'pcs'},
-  {name:'Saos Keju',       harga:4000,  pack:1, satuan:'pcs'},
-  {name:'Saos Sambal Ladahitam', harga:4000, pack:1, satuan:'pcs'},
-  {name:'Saos BBQ Spicy',  harga:4000,  pack:1, satuan:'pcs'},
-  {name:'Sambal Geprek',   harga:5000,  pack:1, satuan:'pcs'},
-  {name:'Sambal Bawang',   harga:5000,  pack:1, satuan:'pcs'},
-  {name:'Dada & Paha Atas',harga:11000, pack:5, satuan:'pack'},
-  {name:'Paha Bawah & Sayap',harga:9000,pack:4, satuan:'pack'},
+  {name:'Nasi',                        harga:3000,  pack:1, satuan:'pcs'},
+  {name:'Cup',                         harga:3000,  pack:1, satuan:'pcs'},
+  {name:'Kulit',                       harga:8000,  pack:1, satuan:'pcs'},
+  {name:'Saos Keju',                   harga:4000,  pack:1, satuan:'pcs'},
+  {name:'Saos Sambal Ladahitam',       harga:4000,  pack:1, satuan:'pcs'},
+  {name:'Saos BBQ Spicy',              harga:4000,  pack:1, satuan:'pcs'},
+  {name:'Sambal Geprek',               harga:5000,  pack:1, satuan:'pcs'},
+  {name:'Sambal Bawang',               harga:5000,  pack:1, satuan:'pcs'},
+  {name:'Dada & Paha Atas — Original', harga:11000, pack:5, satuan:'pack', ayam:'dpa-orig'},
+  {name:'Dada & Paha Atas — Hot',      harga:11000, pack:5, satuan:'pack', ayam:'dpa-hot'},
+  {name:'Paha Bawah & Sayap — Original',harga:9000, pack:4, satuan:'pack', ayam:'pbs-orig'},
+  {name:'Paha Bawah & Sayap — Hot',    harga:9000,  pack:4, satuan:'pack', ayam:'pbs-hot'},
 ];
 
 const KAT_AYAM = ['Ayam Dimakan','Ayam Sisa'];
@@ -579,18 +636,104 @@ const isoToday = () => { const d=new Date(); return d.getFullYear()+'-'+String(d
 
 document.getElementById('hdrDate').textContent = new Date().toLocaleDateString('id-ID',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
 
-// ═══════════════ STORAGE ═══════════════
-const DB   = k => JSON.parse(localStorage.getItem(k)) || (k==='stok_hari'?{}:[]);
-const SAVE = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+// ═══════════════ FIREBASE CONFIG ═══════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDB62tkLMDq1L3T21kg41bpYcit3FIUvRU",
+  authDomain: "dkriuktatang.firebaseapp.com",
+  databaseURL: "https://dkriuktatang-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dkriuktatang",
+  storageBucket: "dkriuktatang.firebasestorage.app",
+  messagingSenderId: "985982047105",
+  appId: "1:985982047105:web:f2a09175f9a0e369ae8e80"
+};
 
-const getPenjualan  = () => DB('db_toko');
-const savePenjualan = d  => SAVE('db_toko', d);
-const getStok       = () => DB('stok_hari');
-const saveStok      = s  => SAVE('stok_hari', s);
-const getPembelian  = () => DB('pembelian_ayam');
-const savePembelian = d  => SAVE('pembelian_ayam', d);
-const getPengeluaran = () => DB('db_keluar');
-const savePengeluaran = d => SAVE('db_keluar', d);
+// Load Firebase SDK dynamically
+let fbDB = null;
+let fbRef, fbSet, fbGet, fbOnValue, fbOff;
+
+async function initFirebase() {
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const { getDatabase, ref, set, get, onValue, off } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    const app = initializeApp(firebaseConfig);
+    fbDB = getDatabase(app);
+    fbRef = (path) => ref(fbDB, path);
+    fbSet = set; fbGet = get; fbOnValue = onValue; fbOff = off;
+    console.log('✅ Firebase connected');
+    return true;
+  } catch(e) {
+    console.warn('Firebase failed, using localStorage:', e);
+    return false;
+  }
+}
+
+// ═══════════════ STORAGE (Firebase + localStorage fallback) ═══════════════
+const LS = k => JSON.parse(localStorage.getItem(k)) || (k==='stok_hari'||k==='db_cache'?{}:[]);
+const LSS = (k,v) => localStorage.setItem(k, JSON.stringify(v));
+
+// Cache layer — always keep localStorage in sync for offline use
+function cacheSet(k, v) { LSS(k, v); }
+function cacheGet(k) { return LS(k); }
+
+async function fbSave(key, data) {
+  cacheSet(key, data);
+  if (!fbDB) return;
+  try { await fbSet(fbRef('dkriuk/'+key), data); }
+  catch(e) { console.warn('fbSave error:', e); }
+}
+
+async function fbLoad(key) {
+  if (!fbDB) return cacheGet(key);
+  try {
+    const snap = await fbGet(fbRef('dkriuk/'+key));
+    const val = snap.exists() ? snap.val() : (key==='stok_hari'?{}:[]);
+    cacheSet(key, val);
+    return val;
+  } catch(e) {
+    console.warn('fbLoad error, using cache:', e);
+    return cacheGet(key);
+  }
+}
+
+// Subscribe to real-time updates
+function fbSubscribe(key, cb) {
+  if (!fbDB) return;
+  fbOnValue(fbRef('dkriuk/'+key), snap => {
+    const val = snap.exists() ? snap.val() : (key==='stok_hari'?{}:[]);
+    cacheSet(key, val);
+    cb(val);
+  });
+}
+
+// Data accessors
+const getPenjualan   = () => cacheGet('db_toko');
+const savePenjualan  = async d => { await fbSave('db_toko', d); };
+const getStok        = () => cacheGet('stok_hari');
+const saveStok       = async s => { await fbSave('stok_hari', s); };
+const getPembelian   = () => cacheGet('pembelian_ayam');
+const savePembelian  = async d => { await fbSave('pembelian_ayam', d); };
+const getPengeluaran = () => cacheGet('db_keluar');
+const savePengeluaran= async d => { await fbSave('db_keluar', d); };
+const getItemLain    = () => cacheGet('item_lain');
+const saveItemLain   = async d => { await fbSave('item_lain', d); };
+const getStokLain    = () => cacheGet('stok_lain');
+const saveStokLain   = async d => { await fbSave('stok_lain', d); };
+const getCustomItems = () => cacheGet('custom_items');
+const saveCustomItems= async d => { await fbSave('custom_items', d); };
+const allItems       = () => [...ITEMS, ...getCustomItems().map((c,i)=>({...c,_custom:true,_ci:i}))];
+
+// Load all data from Firebase into cache on startup
+async function loadAllFromFirebase() {
+  document.getElementById('syncStatus').textContent = '🔄 Sinkronisasi...';
+  const keys = ['db_toko','db_keluar','stok_hari','pembelian_ayam','item_lain','stok_lain','custom_items'];
+  await Promise.all(keys.map(k => fbLoad(k)));
+  document.getElementById('syncStatus').textContent = fbDB ? '☁️ Online' : '📱 Offline';
+
+  // Subscribe real-time
+  if (fbDB) {
+    keys.forEach(k => fbSubscribe(k, () => { renderAll(); }));
+  }
+}
 
 // ═══════════════ TABS ═══════════════
 function goTab(name, el) {
@@ -655,13 +798,15 @@ function renderInputTable() {
     return `<span style="font-size:11px;color:var(--mt)">${fmt(item.harga)}</span>`;
   };
 
-  document.getElementById('inputBody').innerHTML = ITEMS.map((item,i) => {
+  const items = allItems();
+  document.getElementById('inputBody').innerHTML = items.map((item,i) => {
     const savedAwal = todayS[item.name] ? todayS[item.name].awal : '';
+    const delBtn = item._custom ? `<button onclick="hapusItemCustom(${item._ci})" style="background:none;border:none;color:var(--rd);font-size:14px;cursor:pointer;padding:0 4px" title="Hapus item">✕</button>` : '';
     if (!isMalam) {
       const hasVal = savedAwal !== '';
       const dispTxt = hasVal ? savedAwal+' '+item.satuan : '—';
       return `<tr>
-        <td class="nm">${item.name}</td>
+        <td class="nm">${item.name}${delBtn}</td>
         <td class="pr">${hargaPackLabel(item)}</td>
         <td class="inp"><div class="awal-cell">
           <span class="aval-disp ${hasVal?'set':''}" id="av_${i}">${dispTxt}</span>
@@ -683,7 +828,7 @@ function onSisaInput() {
   if (curMode!=='malam') { document.getElementById('sumPrev').classList.remove('show'); return; }
   const stok = getStok(); const todayS = stok[today()]||{};
   let rows=[], tot=0;
-  ITEMS.forEach((item,i)=>{
+  allItems().forEach((item,i)=>{
     const el=document.getElementById('si_'+i); if(!el) return;
     const sisa=parseInt(el.value); const awal=todayS[item.name]?todayS[item.name].awal:null;
     if(awal!==null && !isNaN(sisa)){
@@ -709,7 +854,7 @@ function simpanInput() {
     if(!stok[today()]) stok[today()]={};
     const todayS=stok[today()]||{};
     const db=getPenjualan(); let saved=0;
-    ITEMS.forEach((item,i)=>{
+    allItems().forEach((item,i)=>{
       const el=document.getElementById('si_'+i); if(!el||el.disabled) return;
       const sisa=parseInt(el.value); const awal=todayS[item.name]?todayS[item.name].awal:null;
       if(awal!==null && !isNaN(sisa)){
@@ -729,7 +874,7 @@ function simpanInput() {
 // ═══════════════ POPUP TAMBAH STOK ═══════════════
 let popIdx = -1;
 function bukaPopup(i) {
-  popIdx=i; const item=ITEMS[i];
+  popIdx=i; const item=allItems()[i];
   const stok=getStok(); const todayS=stok[today()]||{};
   const cur=todayS[item.name]?todayS[item.name].awal:0;
   document.getElementById('popTitle').textContent=item.name;
@@ -748,7 +893,7 @@ function closePopup(e) {
 function konfirmasiTambah() {
   const tambah=parseInt(document.getElementById('popInp').value);
   if(isNaN(tambah)||tambah<=0){toast('⚠ Masukkan jumlah valid','var(--ac)');return;}
-  const item=ITEMS[popIdx]; const stok=getStok();
+  const item=allItems()[popIdx]; const stok=getStok();
   if(!stok[today()]) stok[today()]={};
   const cur=stok[today()][item.name]?stok[today()][item.name].awal:0;
   const newAwal=cur+tambah;
@@ -762,15 +907,60 @@ function konfirmasiTambah() {
   updateBanner(); popIdx=-1;
 }
 
+// ═══════════════ ITEM BARU PERMANEN ═══════════════
+function bukaPopupItemBaru(){
+  document.getElementById('newItemNama').value='';
+  document.getElementById('newItemHarga').value='';
+  document.getElementById('newItemSatuan').value='pcs';
+  document.getElementById('newItemPack').value='1';
+  document.getElementById('newItemPreviewHarga').textContent='per pcs';
+  document.getElementById('popNewItemOv').classList.add('show');
+  setTimeout(()=>document.getElementById('newItemNama').focus(),100);
+}
+function tutupPopupItemBaru(e){
+  if(e&&e.target!==document.getElementById('popNewItemOv')) return;
+  document.getElementById('popNewItemOv').classList.remove('show');
+}
+function konfirmasiItemBaru(){
+  const nama=document.getElementById('newItemNama').value.trim();
+  const harga=parseInt(document.getElementById('newItemHarga').value)||0;
+  const satuan=document.getElementById('newItemSatuan').value.trim()||'pcs';
+  const pack=parseInt(document.getElementById('newItemPack').value)||1;
+  if(!nama){toast('⚠ Masukkan nama item','var(--ac)');return;}
+  if(harga<=0){toast('⚠ Masukkan harga','var(--ac)');return;}
+  const all=allItems();
+  if(all.find(i=>i.name.toLowerCase()===nama.toLowerCase())){toast('⚠ Item sudah ada','var(--ac)');return;}
+  const customs=getCustomItems();
+  customs.push({name:nama, harga, satuan, pack});
+  saveCustomItems(customs);
+  document.getElementById('popNewItemOv').classList.remove('show');
+  renderInputTable();
+  toast('✓ Item "'+nama+'" ditambahkan permanen');
+}
+function hapusItemCustom(ci){
+  if(!confirm('Hapus item ini dari daftar?')) return;
+  const customs=getCustomItems();
+  customs.splice(ci,1);
+  saveCustomItems(customs);
+  renderInputTable();
+  toast('🗑 Item dihapus');
+}
+
 // ═══════════════ PENGELUARAN ═══════════════
+// Kategori yang bisa punya hubungan ke stok lainnya
+const KAT_STOK_LAIN = ['Beli Cup','Beli Gula','Beli Sedotan','Lainnya'];
+
 function onKatChange() {
   const kat=document.getElementById('poKat').value;
   const isAyam=KAT_AYAM.includes(kat);
+  const isStokLain=KAT_STOK_LAIN.includes(kat);
   document.getElementById('ayamFields').style.display=isAyam?'block':'none';
   document.getElementById('biasaFields').style.display=isAyam?'none':'block';
+  document.getElementById('stokLainField').style.display=isStokLain?'block':'none';
   document.getElementById('poNominal').value='';
   document.getElementById('poJumlahAyam').value='';
   document.getElementById('poPreview').textContent='Rp 0';
+  if(isStokLain) renderPoStokLainSelect();
 }
 function onAyamChange() {
   const harga=parseInt(document.getElementById('poJenisAyam').value)||0;
@@ -781,6 +971,13 @@ function onNomChange() {
   const n=parseInt(document.getElementById('poNominal').value)||0;
   document.getElementById('poPreview').textContent=fmt(n);
 }
+function renderPoStokLainSelect(){
+  const sel=document.getElementById('poStokLainItem');
+  const items=getItemLain();
+  sel.innerHTML='<option value="">— tidak kurangi stok —</option>'+
+    items.map(i=>`<option value="${i.nama}">${i.nama} (${i.satuan})</option>`).join('');
+}
+
 function simpanPengeluaran() {
   const kat=document.getElementById('poKat').value;
   const isAyam=KAT_AYAM.includes(kat);
@@ -801,12 +998,25 @@ function simpanPengeluaran() {
   const db=getPengeluaran();
   db.push({kat,nominal,ket,tanggal:today(),ts:Date.now()});
   savePengeluaran(db);
+
+  // Kurangi stok lainnya jika dipilih
+  const stokItem=document.getElementById('poStokLainItem')?.value;
+  const stokJml=parseInt(document.getElementById('poStokLainJml')?.value)||0;
+  if(stokItem && stokJml>0){
+    const stokDb=getStokLain();
+    stokDb.push({item:stokItem, tgl:isoToday(), jml:-stokJml, catatan:'Keluar: '+kat+(catatan?' - '+catatan:''), ts:Date.now()});
+    saveStokLain(stokDb);
+    toast('✓ Pengeluaran dicatat & stok '+stokItem+' berkurang '+stokJml);
+  } else {
+    toast('✓ Pengeluaran dicatat');
+  }
+
   // reset
   document.getElementById('poNominal').value='';
   document.getElementById('poJumlahAyam').value='';
   document.getElementById('poCatatan').value='';
   document.getElementById('poPreview').textContent='Rp 0';
-  toast('✓ Pengeluaran dicatat');
+  if(document.getElementById('poStokLainJml')) document.getElementById('poStokLainJml').value='';
   renderPengeluaran(); renderAll();
 }
 function renderPengeluaran() {
@@ -851,12 +1061,6 @@ function setStokTab(tab, el){
   document.getElementById('stokTabLain').classList.toggle('malam', true);
   if(tab==='lain'){ renderLainSum(); renderLainRiwayat(); renderLainSelect(); }
 }
-
-// ── Storage Stok Lainnya ──
-const getItemLain   = () => JSON.parse(localStorage.getItem('item_lain')) || [];
-const saveItemLain  = d  => localStorage.setItem('item_lain', JSON.stringify(d));
-const getStokLain   = () => JSON.parse(localStorage.getItem('stok_lain')) || [];
-const saveStokLain  = d  => localStorage.setItem('stok_lain', JSON.stringify(d));
 
 // ── Popup tambah item baru ──
 function bukaPopupTambahItem(){
@@ -936,7 +1140,9 @@ function renderLainRiwayat(){
     const item=items.find(i=>i.nama===d.item);
     const sat=item?item.satuan:'';
     const tglFmt=new Date(d.tgl).toLocaleDateString('id-ID',{day:'2-digit',month:'2-digit',year:'numeric'});
-    return `<tr><td>${tglFmt}</td><td>${d.item}</td><td style="color:var(--gr);font-weight:600">+${d.jml} ${sat}</td><td style="color:var(--mt)">${d.catatan||'—'}</td></tr>`;
+    const isKeluar=d.jml<0;
+    const jmlStr=isKeluar?`<span style="color:var(--rd);font-weight:600">${d.jml} ${sat}</span>`:`<span style="color:var(--gr);font-weight:600">+${d.jml} ${sat}</span>`;
+    return `<tr><td>${tglFmt}</td><td>${d.item}</td><td>${jmlStr}</td><td style="color:var(--mt)">${d.catatan||'—'}</td></tr>`;
   }).join('');
 }
 function updatePbInfo(){
@@ -967,18 +1173,23 @@ function inWeek(tanggal,wk){
 }
 function renderAyamSum(){
   const wk=currWeekKey();
-  const list=getPembelian().filter(p=>p.weekKey===wk);
-  const masukOrig=list.reduce((s,p)=>s+(p.orig||0),0);
-  const masukHot =list.reduce((s,p)=>s+(p.hot||0),0);
+  const pembelian=getPembelian().filter(p=>p.weekKey===wk);
+  const masukOrig=pembelian.reduce((s,p)=>s+(p.orig||0),0);
+  const masukHot =pembelian.reduce((s,p)=>s+(p.hot||0),0);
+  const data=getPenjualan();
+  const jualOrig=data.filter(d=>inWeek(d.tanggal,wk)&&(d.item==='Dada & Paha Atas — Original'||d.item==='Paha Bawah & Sayap — Original')).reduce((s,d)=>s+d.terjual,0);
+  const jualHot =data.filter(d=>inWeek(d.tanggal,wk)&&(d.item==='Dada & Paha Atas — Hot'||d.item==='Paha Bawah & Sayap — Hot')).reduce((s,d)=>s+d.terjual,0);
+  const sisaOrig=masukOrig-jualOrig;
+  const sisaHot =masukHot -jualHot;
   const sc=(v)=>v<0?'rd':v<=3?'or':'gr';
   document.getElementById('as-orig-masuk').textContent=masukOrig+' pack';
-  document.getElementById('as-hot-masuk').textContent=masukHot+' pack';
-  document.getElementById('as-orig-jual').textContent='—';
-  document.getElementById('as-hot-jual').textContent='—';
+  document.getElementById('as-hot-masuk').textContent =masukHot +' pack';
+  document.getElementById('as-orig-jual').textContent =jualOrig +' pack';
+  document.getElementById('as-hot-jual').textContent  =jualHot  +' pack';
   const dOrig=document.getElementById('as-orig-sisa');
   const dHot =document.getElementById('as-hot-sisa');
-  dOrig.textContent=masukOrig+' pack'; dOrig.className='av '+sc(masukOrig);
-  dHot.textContent =masukHot+' pack';  dHot.className ='av '+sc(masukHot);
+  dOrig.textContent=sisaOrig+' pack'; dOrig.className='av '+sc(sisaOrig);
+  dHot.textContent =sisaHot +' pack'; dHot.className ='av '+sc(sisaHot);
 }
 function renderRekap(){
   const el=document.getElementById('rekapList');
@@ -1135,9 +1346,13 @@ function downloadCSV(){
 }
 
 // ═══════════════ RESET ═══════════════
-function resetData(){
+async function resetData(){
   if(confirm('Hapus SEMUA data? (penjualan, pengeluaran, stok, pembelian ayam)\nTidak bisa dibatalkan.')){
-    ['db_toko','db_keluar','stok_hari','pembelian_ayam','item_lain','stok_lain'].forEach(k=>localStorage.removeItem(k));
+    const keys=['db_toko','db_keluar','stok_hari','pembelian_ayam','item_lain','stok_lain','custom_items'];
+    keys.forEach(k=>localStorage.removeItem(k));
+    if(fbDB){
+      try{ await fbSet(fbRef('dkriuk'), null); }catch(e){}
+    }
     renderAll(); renderPengeluaran(); renderRiwayat();
     toast('🗑 Semua data dihapus');
   }
@@ -1150,7 +1365,14 @@ function renderAll(){
   requestAnimationFrame(()=>renderTrend(data,keluar));
 }
 
-renderAll();
+// ═══════════════ INIT ═══════════════
+(async () => {
+  await initFirebase();
+  await loadAllFromFirebase();
+  renderAll();
+  renderPengeluaran();
+  renderRiwayat();
+})();
 </script>
 </body>
 </html>
