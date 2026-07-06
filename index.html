@@ -2104,15 +2104,7 @@ function renderTrend(data, keluar){
     }
   });
 }
-  const vals=allDates.map(d=>(byDate[d]||0)-(outByDate[d]||0));
-  if(vals.length<2) return;
-  const W=canvas.offsetWidth||320; canvas.width=W;
-  const H=130, pad={t:10,r:10,b:26,l:14};
-  const gW=W-pad.l-pad.r, gH=H-pad.t-pad.b;
-  const maxV=Math.max(...vals.map(Math.abs),1);
-  const x=i=>pad.l+(i/(vals.length-1))*gW;
-  const y=v=>pad.t+gH/2-(v/maxV)*(gH/2);
-  ctx.strokeStyle='#2e3347'; ctx.lineWidth=1;
+
 // ═══════════════ CSV ═══════════════
 function downloadCSV(){
   const data=getPenjualan(); const keluar=getPengeluaran();
